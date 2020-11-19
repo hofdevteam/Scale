@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://miro.com/app/static/styles.1.0.css">
+    <script src="https://miro.com/app/static/sdk.1.1.js"></script>
+
+    <style>
+        .miro-input--small, .miro-btn, button,  .ng-hide, .miro-btn--pull-right {
+            width: 80px;
+            margin: 3px 0 0 14px ;
+            padding: 3px;
+        }
+        .miro-h4, .no-selected-widget {
+            margin: 3px 0 0 14px ;
+        }
+        body {
+          margin: 0px;
+          padding: 0px;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div class="miro-h4">Sizes and scale</div>
+<section class="no-selected-widget">
+  <div class="miro-p-medium">
+    Please select one widget to read size
+  </div>
+</section>
+
+<section class="widget-info">
+  <div class="miro-p-medium">
+    <form onsubmit="btResize()">
+      <input class="miro-input miro-input--primary miro-input--small" id="input_x" ></input>
+      <input class="miro-input miro-input--primary miro-input--small" id="input_y" ></input>
+      <button type="submit"  class="miro-btn miro-btn--primary miro-btn--small">Resize</button>
+    </form>
+  </div>
+  <div class="miro-p-medium">
+    <button onclick="btSetScale()" class="miro-btn miro-btn--secondary miro-btn--small">set X</button>
+    <button onclick="" class="miro-btn miro-btn--secondary miro-btn--small" disabled>set Y</button>
+    <button onclick="" class="miro-btn miro-btn--primary miro-btn--small">Quotation</button>
+  </div>
+</section>
+
+<script>
+	let lastSelectedWidgetId
+	let widgetInfo = document.querySelector('.widget-info')
+  let input_x = document.querySelector('#input_x')
+  let input_y = document.querySelector('#input_y')
+	let placeholder = document.querySelector('.no-selected-widget')
+
+  var scale_x = 0
+  var scale_y = 0
+  var objSize_x = ""
+  var objSize_y = ""
+  var _sel = "" ;
+
+
+	function onSelectionChange() {
+      miro.board.selection.get().then(function(result) {
+        updateSelection(result)
+      });
+	}
+
+	function updateSelection(selectedWidgets) {
+    console.log(selectedWidgets);
+		let selectedWidget = selectedWidgets[0]
+		if (selectedWidgets.length === 1) {
+
+			showElement(widgetInfo)
+			hideElement(placeholder)
+			lastSelectedWidgetId = selectedWidget.id
+      objSize_x = selectedWidget.bounds.width
+      objSize_y = selectedWidget.bounds.height
+
+      getScale();
+
+		} else {
+			showElement(placeholder)
+			hideElement(widgetInfo)
+		}
+	}
+
+// ----------------------------------
+  function setScale(widgetId, scale) {
+    // Get current scale
+    miro.board.widgets.get({
+      "metadata": {
+        "3074457351461575093": {
+          "scale_on": 1
+        }
+      }
+    }).then( function(result) {
+      setScale_ClearOldWriteNew(result, widgetId, scale)
+
+    })
+  }
+
+  function setScale_ClearOldWriteNew(widgetResultOld, widgetIdNew, scale) {
+    // Clear curent scale
+    if (widgetResultOld != 0) {
+      miro.board.widgets.update({
+        "id": widgetResultOld[0].id,
+        "metadata": {
+          "3074457351461575093": {
+            "scale": "",
+            "scale_on": ""
+          }
+        }
+      })
+    }
+
+    // set new scale
+    miro.board.widgets.update({
+      "id": widgetIdNew,
+      "metadata": {
+        "3074457351461575093": {
+          "scale": scale,
+          "scale_on": 1
+        }
+      }
+    })
+  }
+
+
+// ----------------------------------
+
+
+
+
+  function getScale() {
+
+    miro.board.widgets.get({
+      "metadata": {
+        "3074457351461575093": {
+          "scale_on": 1
+        }
+      }
+    }).then( function(result) {
+      scale_x = result[0].metadata["3074457351461575093"].scale
+      input_x.value = roundCustom( objSize_x / scale_x )
+      input_y.value = roundCustom( objSize_y / scale_x )
+      // console.log(scale_x)
+    })
+
+  }
+
+// ----------------------------------
+
+
+
+	function showElement(el) {
+		el.style.display = 'block'
+	}
+
+	function hideElement(el) {
+		el.style.display = 'none'
+	}
+
+	hideElement(placeholder)
+	hideElement(widgetInfo)
+
+	miro.onReady(() => {
+    miro.addListener(miro.enums.event.SELECTION_UPDATED, onSelectionChange)
+    miro.addListener(miro.enums.event.WIDGETS_TRANSFORMATION_UPDATED, onSelectionChange)
+		miro.board.selection.get().then(function(selectedWidgets) {
+			updateSelection(selectedWidgets)
+		})
+
+
+
+	})
+
+
+	async function btSetScale() {
+		if (lastSelectedWidgetId) {
+      var scale_result = objSize_x / input_x.value
+			setScale(lastSelectedWidgetId, scale_result)
+      input_y.value = objSize_y / scale_result
+			lastSelectedWidgetId = undefined
+		}
+	}
+
+
+  async function btResize() {
+    if (lastSelectedWidgetId) {
+      new_W = input_x.value * scale_x
+      new_H = input_y.value * scale_x
+      miro.board.widgets.update({
+        "id": lastSelectedWidgetId,
+        "width": new_W,
+        "height": new_H
+      })
+
+
+    }
+  }
+
+  function roundCustom(n) {
+    n_abs = Math.abs(n)
+         if (n_abs > 1000 )  { return Math.round( n * 10 )      / 10; }
+    else if (n_abs > 100 )   { return Math.round( n * 100 )     / 100; }
+    else if (n_abs > 10 )    { return Math.round( n * 1000 )    / 1000; }
+    else if (n_abs > 0 )     { return Math.round( n * 10000 )   / 10000; }
+  }
+  console.log(roundCustom(0.6241341))
+
+
+
+
+	const LS_KEY = 'rtb-plugin-widget-info'
+	function saveData(widgetId, text) {
+		// let data = JSON.parse(localStorage.getItem(LS_KEY)) || {}
+		// data[widgetId] = text
+		// localStorage.setItem(LS_KEY, JSON.stringify(data))
+    // Update widget metadata
+	}
+	function getData(widgetId) {
+		// let data = JSON.parse(localStorage.getItem(LS_KEY)) || {}
+		// return data[widgetId] || ''
+	}
+
+  function GetQuotationParams() { // gathers params needed for quotation, converts miro units to scale units
+    //zistit parametre selectnuteho widgetu
+    // ako daleko od widgetu dat legendu?
+    // ak to budu iba rectangles tak width a heigth zmerat
+    // zobrat mierku zo scale a pre-convertovat miro units na scale units
+    // nasledne zapisat do premennej a graficky zobrazit na line
+  }
+
+  function CreateQuotationLine() { // creates quotation line from params available
+    // will create a miro line with correct attributes
+  }
+/*
+NOTES:
+
+UPDATE WIDGET:
+
+miro.board.widgets.update({
+  "id": "3074457348375201764",
+  "scale": 2
+})
+
+
+*/
+
+
+</script>
+</body>
+</html>
